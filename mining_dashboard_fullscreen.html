@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mining Intelligence Dashboard - Full Screen</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --gold: #FFB300;
+    --gold-light: #FFD54F;
+    --cyan: #00E5FF;
+    --cyan-dim: #00ACC1;
+    --red: #FF1744;
+    --green: #00E676;
+    --purple: #E040FB;
+    --orange: #FF6D00;
+    --bg-dark: #020810;
+    --bg-card: rgba(0, 20, 45, 0.75);
+    --border: rgba(0, 229, 255, 0.15);
+    --border-gold: rgba(255, 179, 0, 0.35);
+    --text-primary: #E0F7FA;
+    --text-dim: #80CBC4;
+    --glow-cyan: 0 0 20px rgba(0,229,255,0.5);
+    --glow-gold: 0 0 20px rgba(255,179,0,0.6);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-dark);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text-primary);
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridScroll 25s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes gridScroll {
+    0% { background-position: 0 0; }
+    100% { background-position: 50px 50px; }
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80vw 50vh at 20% 50%, rgba(255,179,0,0.03) 0%, transparent 60%),
+      radial-gradient(ellipse 60vw 40vh at 80% 50%, rgba(0,229,255,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50vw 30vh at 50% 0%, rgba(0,229,255,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .scanline {
+    position: fixed;
+    left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(transparent, rgba(0,229,255,0.06), transparent);
+    animation: scan 8s linear infinite;
+    pointer-events: none;
+    z-index: 100;
+  }
+  @keyframes scan { 0% { top: -3px; } 100% { top: 100vh; } }
+
+  .dashboard {
+    position: relative;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: 260px 1fr 1fr 1fr 1fr 240px;
+    grid-template-rows: 70px 1fr 1fr 1fr;
+    gap: 7px;
+    padding: 10px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-gold);
+    padding-bottom: 8px;
+  }
+
+  .brand { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    border: 2px solid var(--gold);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900; font-size: 16px;
+    color: var(--gold);
+    animation: pulseLogo 3s ease-in-out infinite;
+  }
+  @keyframes pulseLogo {
+    0%,100% { box-shadow: 0 0 10px rgba(255,179,0,0.4); }
+    50% { box-shadow: 0 0 30px rgba(255,179,0,0.9), inset 0 0 15px rgba(255,179,0,0.15); }
+  }
+
+  .title-block h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px; font-weight: 700;
+    color: var(--gold); letter-spacing: 4px;
+    text-shadow: 0 0 20px rgba(255,179,0,0.7);
+  }
+  .title-block p {
+    font-size: 10px; color: var(--text-dim);
+    letter-spacing: 4px; font-family: 'Share Tech Mono', monospace;
+  }
+
+  .header-stats { display: flex; gap: 24px; align-items: center; }
+  .hstat { text-align: center; }
+  .hstat-val { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 700; line-height: 1; }
+  .hstat-val.gold { color: var(--gold); text-shadow: var(--glow-gold); }
+  .hstat-val.cyan { color: var(--cyan); text-shadow: var(--glow-cyan); }
+  .hstat-val.green { color: var(--green); }
+  .hstat-val.purple { color: var(--purple); }
+  .hstat-lbl { font-size: 9px; color: var(--text-dim); letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; }
+  .hsep { width: 1px; height: 36px; background: var(--border); }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,230,118,0.08);
+    border: 1px solid rgba(0,230,118,0.3);
+    border-radius: 20px; padding: 6px 16px;
+    font-size: 11px; color: var(--green);
+    letter-spacing: 2px; font-family: 'Share Tech Mono', monospace;
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--green); border-radius: 50%;
+    animation: blink 1s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--green);
+  }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.15; } }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.5;
+  }
+  .panel.gold-top::before { background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .panel.green-top::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+  .panel.purple-top::before { background: linear-gradient(90deg, transparent, var(--purple), transparent); }
+  .panel.orange-top::before { background: linear-gradient(90deg, transparent, var(--orange), transparent); }
+
+  .corner-tl, .corner-br {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-color: rgba(255,179,0,0.4);
+    border-style: solid;
+  }
+  .corner-tl { top: 4px; left: 4px; border-width: 1px 0 0 1px; }
+  .corner-br { bottom: 4px; right: 4px; border-width: 0 1px 1px 0; }
+
+  .ptitle {
+    font-size: 9px; color: var(--text-dim);
+    letter-spacing: 3px; text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .ptitle .tag { color: var(--cyan); }
+  .ptitle .tag.gold { color: var(--gold); }
+  .ptitle .tag.green { color: var(--green); }
+
+  .chart-wrap { flex: 1; position: relative; min-height: 0; }
+
+  /* ── LEFT KPI COLUMN ── */
+  .kpi-col {
+    grid-column: 1;
+    grid-row: 2 / 5;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .kpi-item {
+    flex: 1;
+    background: rgba(0,15,35,0.7);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .kpi-item:hover { border-color: var(--cyan); }
+
+  .kpi-item::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    animation: kpiBar 5s ease-in-out infinite alternate;
+  }
+  .kpi-item:nth-child(1)::after { background: var(--cyan); animation-delay:0s; width:88%; }
+  .kpi-item:nth-child(2)::after { background: var(--gold); animation-delay:0.4s; width:75%; }
+  .kpi-item:nth-child(3)::after { background: var(--green); animation-delay:0.8s; width:92%; }
+  .kpi-item:nth-child(4)::after { background: var(--orange); animation-delay:1.2s; width:67%; }
+  .kpi-item:nth-child(5)::after { background: var(--purple); animation-delay:1.6s; width:83%; }
+  .kpi-item:nth-child(6)::after { background: var(--red); animation-delay:2s; width:45%; }
+  .kpi-item:nth-child(7)::after { background: var(--cyan); animation-delay:2.4s; width:94%; }
+
+  @keyframes kpiBar {
+    0% { transform: scaleX(0.5); transform-origin: left; }
+    100% { transform: scaleX(1); transform-origin: left; }
+  }
+
+  .kpi-lbl { font-size: 8px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; font-family: 'Share Tech Mono', monospace; }
+  .kpi-val { font-family: 'Orbitron', monospace; font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .kpi-val.c { color: var(--cyan); }
+  .kpi-val.g { color: var(--gold); }
+  .kpi-val.gr { color: var(--green); }
+  .kpi-val.o { color: var(--orange); }
+  .kpi-val.p { color: var(--purple); }
+  .kpi-val.r { color: var(--red); }
+  .kpi-val.w { color: #fff; }
+  .kpi-unit { font-size: 11px; font-weight: 400; }
+
+  .kpi-sub { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .delta { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 2px; }
+  .delta.up { background: rgba(0,230,118,0.15); color: var(--green); }
+  .delta.dn { background: rgba(255,23,68,0.15); color: var(--red); }
+  .delta.nt { background: rgba(0,229,255,0.15); color: var(--cyan); }
+  .kpi-desc { font-size: 9px; color: var(--text-dim); }
+
+  /* ── RIGHT ALERTS COLUMN ── */
+  .alerts-col {
+    grid-column: 6;
+    grid-row: 2 / 5;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .alerts-title {
+    font-size: 9px; color: var(--text-dim);
+    letter-spacing: 3px; text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 2px; flex-shrink: 0;
+  }
+
+  .alert-item {
+    background: rgba(0,15,35,0.7);
+    border-left: 3px solid var(--cyan);
+    border-radius: 0 4px 4px 0;
+    padding: 7px 9px;
+    flex-shrink: 0;
+  }
+  .alert-item.warn { border-color: var(--gold); }
+  .alert-item.crit { border-color: var(--red); background: rgba(255,23,68,0.05); }
+  .alert-item.ok { border-color: var(--green); }
+  .alert-item.info { border-color: var(--purple); }
+
+  .alert-type { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; }
+  .alert-item .alert-type { color: var(--cyan); }
+  .alert-item.warn .alert-type { color: var(--gold); }
+  .alert-item.crit .alert-type { color: var(--red); }
+  .alert-item.ok .alert-type { color: var(--green); }
+  .alert-item.info .alert-type { color: var(--purple); }
+
+  .alert-msg { font-size: 10px; font-weight: 600; line-height: 1.3; color: var(--text-primary); margin-top: 1px; }
+  .alert-time { font-size: 8px; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; margin-top: 2px; }
+
+  /* ── GAUGE ROW ── */
+  .gauge-row { display: flex; gap: 6px; flex: 1; align-items: center; justify-content: space-around; }
+  .gauge-item { text-align: center; flex: 1; }
+  .gauge-lbl { font-size: 8px; color: var(--text-dim); letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; margin-top: 3px; }
+
+  /* ── TABLE ── */
+  .mtable { width: 100%; border-collapse: collapse; font-size: 9px; }
+  .mtable th {
+    color: var(--text-dim); font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px; text-transform: uppercase; font-size: 8px;
+    border-bottom: 1px solid var(--border); padding: 4px 6px; text-align: left;
+  }
+  .mtable td { padding: 4px 6px; border-bottom: 1px solid rgba(0,229,255,0.04); font-weight: 600; font-size: 10px; }
+  .mtable tr:hover td { background: rgba(0,229,255,0.04); }
+
+  .sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+  .s-g { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .s-y { background: var(--gold); box-shadow: 0 0 5px var(--gold); }
+  .s-r { background: var(--red); box-shadow: 0 0 5px var(--red); }
+  .s-c { background: var(--cyan); box-shadow: 0 0 5px var(--cyan); }
+
+  /* ── PROGRESS BARS ── */
+  .pbar-wrap { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .pbar-fill { height: 100%; border-radius: 3px; }
+
+  /* ── WEATHER/SHIFT MINI CARDS ── */
+  .mini-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; flex: 1; }
+  .mini-card {
+    background: rgba(0,15,35,0.6);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 7px 8px;
+    display: flex; flex-direction: column;
+    justify-content: center;
+  }
+  .mc-lbl { font-size: 7px; color: var(--text-dim); letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; }
+  .mc-val { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 700; color: var(--cyan); line-height: 1.1; }
+  .mc-sub { font-size: 8px; color: var(--text-dim); }
+
+  /* ── SPARKLINE ── */
+  .sparkbars { display: flex; align-items: flex-end; gap: 2px; height: 25px; margin-top: 5px; }
+  .sb { flex: 1; border-radius: 1px; opacity: 0.7; }
+
+  /* number ticker animation */
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .fade-in { animation: fadeIn 0.6s ease forwards; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="dashboard">
+
+  <!-- ══ HEADER ══ -->
+  <div class="header">
+    <div class="brand">
+      <div class="logo-icon">BI</div>
+      <div class="title-block">
+        <h1>⬡ MINING INTELLIGENCE CENTER</h1>
+        <p>Quellaveco - Cuajone - Operations · Real-Time Analytics · Power BI Enterprise Suite v4.2</p>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val gold" id="hProd">18,420 t</div><div class="hstat-lbl">Producción HOY</div></div>
+      <div class="hsep"></div>
+      <div class="hstat"><div class="hstat-val cyan">94.7%</div><div class="hstat-lbl">Disponibilidad</div></div>
+      <div class="hsep"></div>
+      <div class="hstat"><div class="hstat-val green">S/ 2.41M</div><div class="hstat-lbl">Revenue Diario</div></div>
+      <div class="hsep"></div>
+      <div class="hstat"><div class="hstat-val cyan">0.847%</div><div class="hstat-lbl">Ley Cu</div></div>
+      <div class="hsep"></div>
+      <div class="hstat"><div class="hstat-val gold">47</div><div class="hstat-lbl">Equipos Activos</div></div>
+      <div class="hsep"></div>
+      <div class="hstat"><div class="hstat-val purple">247</div><div class="hstat-lbl">Días Sin Accidente</div></div>
+      <div class="hsep"></div>
+      <div class="live-badge"><div class="live-dot"></div><span id="liveClock">LIVE · 14:32:07</span></div>
+    </div>
+  </div>
+
+  <!-- ══ LEFT KPI COLUMN ══ -->
+  <div class="kpi-col">
+    <div style="font-size:8px; color:var(--text-dim); letter-spacing:3px; font-family:'Share Tech Mono',monospace; text-transform:uppercase; padding:4px 0; border-bottom:1px solid var(--border); margin-bottom:2px; flex-shrink:0;">KPI · INDICADORES OPERATIVOS</div>
+    <div class="kpi-item"><div class="kpi-lbl">Tonelaje Acumulado</div><div class="kpi-val c">542,180 <span class="kpi-unit">t</span></div><div class="kpi-sub"><span class="delta up">▲ 3.2%</span><span class="kpi-desc">vs mes anterior</span></div></div>
+    <div class="kpi-item"><div class="kpi-lbl">Ley de Cobre</div><div class="kpi-val g">0.847 <span class="kpi-unit">%Cu</span></div><div class="kpi-sub"><span class="delta up">▲ 0.03</span><span class="kpi-desc">sobre target</span></div></div>
+    <div class="kpi-item"><div class="kpi-lbl">OEE Flota Total</div><div class="kpi-val gr">87.3%</div><div class="kpi-sub"><span class="delta up">▲ 2.1%</span><span class="kpi-desc">eficiencia global</span></div></div>
+    <div class="kpi-item"><div class="kpi-lbl">Costo / Tonelada</div><div class="kpi-val o">$4.82 <span class="kpi-unit">USD</span></div><div class="kpi-sub"><span class="delta dn">▼ $0.18</span><span class="kpi-desc">bajo presupuesto</span></div></div>
+    <div class="kpi-item"><div class="kpi-lbl">MTBF Promedio</div><div class="kpi-val p">312 <span class="kpi-unit">hrs</span></div><div class="kpi-sub"><span class="delta up">▲ 18 hrs</span><span class="kpi-desc">mejor récord</span></div></div>
+    <div class="kpi-item"><div class="kpi-lbl">Consumo Diesel</div><div class="kpi-val r">38% <span class="kpi-unit">stock</span></div><div class="kpi-sub"><span class="delta dn">⚠ BAJO</span><span class="kpi-desc">solicitar reposición</span></div></div>
+    <div class="kpi-item"><div class="kpi-lbl">Horas Operativas</div><div class="kpi-val w">7,840 <span class="kpi-unit">hrs</span></div><div class="kpi-sub"><span class="delta up">▲ 94%</span><span class="kpi-desc">vs programadas</span></div></div>
+  </div>
+
+  <!-- ══ ROW 2: GAUGES ══ -->
+  <div class="panel gold-top" style="grid-column:2; grid-row:2;">
+    <div class="corner-tl"></div><div class="corner-br"></div>
+    <div class="ptitle">Turnómetros · Turno Actual <span class="tag gold">● TARDE</span></div>
+    <div class="gauge-row">
+      <div class="gauge-item"><canvas id="g1" width="90" height="90"></canvas><div class="gauge-lbl">Utilización</div></div>
+      <div class="gauge-item"><canvas id="g2" width="90" height="90"></canvas><div class="gauge-lbl">Rendimiento</div></div>
+      <div class="gauge-item"><canvas id="g3" width="90" height="90"></canvas><div class="gauge-lbl">Calidad</div></div>
+      <div class="gauge-item"><canvas id="g4" width="90" height="90"></canvas><div class="gauge-lbl">Seguridad</div></div>
+      <div class="gauge-item"><canvas id="g5" width="90" height="90"></canvas><div class="gauge-lbl">Energía</div></div>
+    </div>
+  </div>
+
+  <!-- TREND LINE -->
+  <div class="panel" style="grid-column:3; grid-row:2;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Producción Semanal · 24 Semanas <span class="tag">▶ TREND</span></div>
+    <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+
+  <!-- BAR CHART -->
+  <div class="panel gold-top" style="grid-column:4; grid-row:2;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Movimiento de Tierra por Área <span class="tag gold">▶ MTM</span></div>
+    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+  </div>
+
+  <!-- HORIZONTAL BAR - FLEET PERFORMANCE -->
+  <div class="panel green-top" style="grid-column:5; grid-row:2;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Performance por Tipo Equipo <span class="tag green">▶ OEE</span></div>
+    <div class="chart-wrap"><canvas id="hbarChart"></canvas></div>
+  </div>
+
+  <!-- ══ ROW 3 ══ -->
+
+  <!-- DONUT FLEET -->
+  <div class="panel" style="grid-column:2; grid-row:3;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Distribución de Flota <span class="tag">● STATUS</span></div>
+    <div style="display:flex; align-items:center; gap:12px; flex:1; min-height:0;">
+      <div style="width:110px; height:110px; position:relative; flex-shrink:0;">
+        <canvas id="donutChart" width="110" height="110"></canvas>
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+          <div style="font-family:'Orbitron',monospace; font-size:16px; color:var(--gold); font-weight:700; line-height:1;">47</div>
+          <div style="font-size:7px; color:var(--text-dim); letter-spacing:1px;">EQUIPOS</div>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); font-size:10px;"><span><span class="sdot s-g"></span>Operativo</span><span style="color:var(--green); font-family:'Orbitron',monospace; font-size:11px;">28</span></div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); font-size:10px;"><span><span class="sdot s-y"></span>Mantenimiento</span><span style="color:var(--gold); font-family:'Orbitron',monospace; font-size:11px;">12</span></div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--border); font-size:10px;"><span><span class="sdot s-r"></span>Fuera Servicio</span><span style="color:var(--red); font-family:'Orbitron',monospace; font-size:11px;">4</span></div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:10px;"><span><span class="sdot s-c"></span>Standby</span><span style="color:var(--cyan); font-family:'Orbitron',monospace; font-size:11px;">3</span></div>
+        <div class="pbar-wrap"><div class="pbar-fill" style="background:linear-gradient(90deg,var(--cyan),var(--gold)); width:87%; animation:barAnim 4s ease-in-out infinite alternate;"></div></div>
+        <div style="font-size:7px; color:var(--text-dim); margin-top:3px; font-family:'Share Tech Mono',monospace; letter-spacing:1px;">87% DISPONIBILIDAD DE FLOTA</div>
+      </div>
+    </div>
+  </div>
+  @keyframes barAnim { 0%{width:82%;} 100%{width:94%;} }
+
+  <!-- RADAR -->
+  <div class="panel purple-top" style="grid-column:3; grid-row:3;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Performance Index · Áreas <span class="tag" style="color:var(--purple);">▶ RADAR</span></div>
+    <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+  </div>
+
+  <!-- SCATTER CHART -->
+  <div class="panel" style="grid-column:4; grid-row:3;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Correlación OEE vs Producción <span class="tag">▶ SCATTER</span></div>
+    <div class="chart-wrap"><canvas id="scatterChart"></canvas></div>
+  </div>
+
+  <!-- STACKED AREA -->
+  <div class="panel orange-top" style="grid-column:5; grid-row:3;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Costos por Categoría · Mes <span class="tag" style="color:var(--orange);">▶ OPEX</span></div>
+    <div class="chart-wrap"><canvas id="stackedChart"></canvas></div>
+  </div>
+
+  <!-- ══ ROW 4 ══ -->
+
+  <!-- EQUIPMENT TABLE -->
+  <div class="panel" style="grid-column:2; grid-row:4;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Estado Equipos · Ranking OEE <span class="tag">▶ FLOTA</span></div>
+    <div style="overflow-y:auto; flex:1;">
+      <table class="mtable">
+        <thead><tr><th>Equipo</th><th>Tipo</th><th>OEE</th><th>t/hr</th><th>MTBF</th><th>●</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--cyan);">KOMATSU-PC8000</td><td style="color:var(--text-dim);">Excavadora</td><td style="color:var(--green);">96.1%</td><td style="color:var(--gold);">1,240</td><td>387h</td><td><span class="sdot s-g"></span></td></tr>
+          <tr><td style="color:var(--cyan);">CAT-793F-01</td><td style="color:var(--text-dim);">Camión 240t</td><td style="color:var(--green);">94.2%</td><td style="color:var(--gold);">245</td><td>312h</td><td><span class="sdot s-g"></span></td></tr>
+          <tr><td style="color:var(--cyan);">LIEB-R9800</td><td style="color:var(--text-dim);">Pala Eléc.</td><td style="color:var(--green);">89.4%</td><td style="color:var(--gold);">1,100</td><td>298h</td><td><span class="sdot s-g"></span></td></tr>
+          <tr><td style="color:var(--cyan);">HITACH-EX5600</td><td style="color:var(--text-dim);">Pala Hidráu.</td><td style="color:var(--green);">91.7%</td><td style="color:var(--gold);">890</td><td>276h</td><td><span class="sdot s-g"></span></td></tr>
+          <tr><td style="color:var(--cyan);">CAT-793F-04</td><td style="color:var(--text-dim);">Camión 240t</td><td style="color:var(--gold);">78.3%</td><td style="color:var(--gold);">198</td><td>145h</td><td><span class="sdot s-y"></span></td></tr>
+          <tr><td style="color:var(--cyan);">CAT-16M-GR</td><td style="color:var(--text-dim);">Motoniveladora</td><td style="color:var(--red);">45.2%</td><td style="color:var(--red);">—</td><td>—</td><td><span class="sdot s-r"></span></td></tr>
+          <tr><td style="color:var(--cyan);">SANDVIK-DX700</td><td style="color:var(--text-dim);">Perforadora</td><td style="color:var(--green);">88.6%</td><td style="color:var(--gold);">42m</td><td>201h</td><td><span class="sdot s-g"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LINE CHART ENERGY -->
+  <div class="panel gold-top" style="grid-column:3; grid-row:4;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Consumo Energético · kWh/día <span class="tag gold">▶ ENERGÍA</span></div>
+    <div class="chart-wrap"><canvas id="energyChart"></canvas></div>
+  </div>
+
+  <!-- MAINTENANCE BARS -->
+  <div class="panel green-top" style="grid-column:4; grid-row:4;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Plan de Mantenimiento · Estado <span class="tag green">▶ PM/CM</span></div>
+    <div style="flex:1; overflow-y:auto;">
+      <div style="margin-bottom:6px;" id="maintBars"></div>
+    </div>
+  </div>
+
+  <!-- MINI METRIC CARDS -->
+  <div class="panel" style="grid-column:5; grid-row:4;">
+    <div class="corner-tl"></div>
+    <div class="ptitle">Turno Noche · Proyección <span class="tag">▶ FORECAST</span></div>
+    <div class="mini-cards">
+      <div class="mini-card"><div class="mc-lbl">Mineral Proyect.</div><div class="mc-val" style="color:var(--cyan);">9,200</div><div class="mc-sub">toneladas estimadas</div></div>
+      <div class="mini-card"><div class="mc-lbl">Desmonte Proye.</div><div class="mc-val" style="color:var(--gold);">24,500</div><div class="mc-sub">toneladas estimadas</div></div>
+      <div class="mini-card"><div class="mc-lbl">Horas Disponibles</div><div class="mc-val" style="color:var(--green);">10.5</div><div class="mc-sub">hrs turno noche</div></div>
+      <div class="mini-card"><div class="mc-lbl">Equipos Prog.</div><div class="mc-val" style="color:var(--purple);">42</div><div class="mc-sub">en producción</div></div>
+      <div class="mini-card"><div class="mc-lbl">Perforación</div><div class="mc-val" style="color:var(--orange);">840m</div><div class="mc-sub">metros planificados</div></div>
+      <div class="mini-card"><div class="mc-lbl">Eficiencia Proy.</div><div class="mc-val" style="color:var(--green);">89%</div><div class="mc-sub">OEE estimado</div></div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT ALERTS ══ -->
+  <div class="alerts-col">
+    <div class="alerts-title">⚡ ALERTAS · SISTEMA</div>
+    <div class="alert-item ok"><div class="alert-type">✓ PRODUCCIÓN</div><div class="alert-msg">Target diario superado 4.3%</div><div class="alert-time">14:28 · Área Norte</div></div>
+    <div class="alert-item warn"><div class="alert-type">⚠ MANTENIMIENTO</div><div class="alert-msg">CAT-793F-04 requiere PM programado en 48hrs</div><div class="alert-time">13:45 · Flota Pesada</div></div>
+    <div class="alert-item crit"><div class="alert-type">✕ EQUIPO CRÍTICO</div><div class="alert-msg">CAT-16M fuera servicio - falla hidráulica Taller C</div><div class="alert-time">12:10 · Taller Central</div></div>
+    <div class="alert-item ok"><div class="alert-type">✓ SEGURIDAD SSOMA</div><div class="alert-msg">247 días consecutivos sin accidentes LTI</div><div class="alert-time">00:00 · SSOMA</div></div>
+    <div class="alert-item warn"><div class="alert-type">⚠ COMBUSTIBLE</div><div class="alert-msg">Stock diesel 38% - solicitar reposición urgente</div><div class="alert-time">14:30 · Grifo Central</div></div>
+    <div class="alert-item info"><div class="alert-type">ℹ VOLADURA</div><div class="alert-msg">Detonación Zona B-7 programada 17:00hrs</div><div class="alert-time">14:15 · Operaciones</div></div>
+    <div class="alert-item ok"><div class="alert-type">✓ LOGÍSTICA</div><div class="alert-msg">Despacho repuestos KOMATSU confirmado</div><div class="alert-time">13:20 · Almacén</div></div>
+    <div class="alert-item"><div class="alert-type">ℹ GEOTECNIA</div><div class="alert-msg">Monitoreo talud norte - parámetros normales</div><div class="alert-time">14:00 · Geotecnia</div></div>
+    <div class="alert-item ok"><div class="alert-type">✓ PERFORACIÓN</div><div class="alert-msg">840m completados - 100% plan semanal</div><div class="alert-time">12:45 · Drill&Blast</div></div>
+  </div>
+
+</div><!-- end dashboard -->
+
+<script>
+Chart.defaults.color = '#80CBC4';
+Chart.defaults.font.family = 'Rajdhani';
+Chart.defaults.font.size = 9;
+
+// ── GAUGE ──
+function drawGauge(id, value, color, size=90) {
+  const c = document.getElementById(id);
+  if(!c) return;
+  const ctx = c.getContext('2d');
+  const cx=size/2, cy=size/2+4, r=size/2-7;
+  const sa=Math.PI*0.75, ea=Math.PI*2.25;
+  const va=sa+(ea-sa)*(value/100);
+  ctx.clearRect(0,0,size,size+8);
+  // bg
+  ctx.beginPath(); ctx.arc(cx,cy,r,sa,ea);
+  ctx.strokeStyle='rgba(0,229,255,0.08)'; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
+  // ticks
+  for(let i=0;i<=10;i++){
+    const a=sa+(ea-sa)*(i/10);
+    ctx.beginPath();
+    ctx.moveTo(cx+(r-10)*Math.cos(a),cy+(r-10)*Math.sin(a));
+    ctx.lineTo(cx+(r-14)*Math.cos(a),cy+(r-14)*Math.sin(a));
+    ctx.strokeStyle='rgba(0,229,255,0.25)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  // value arc
+  ctx.shadowBlur=12; ctx.shadowColor=color;
+  ctx.beginPath(); ctx.arc(cx,cy,r,sa,va);
+  ctx.strokeStyle=color; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
+  ctx.shadowBlur=0;
+  // center text
+  ctx.fillStyle=color; ctx.shadowBlur=8; ctx.shadowColor=color;
+  ctx.font=`bold ${size>80?14:11}px Orbitron`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(value+'%',cx,cy);
+  ctx.shadowBlur=0;
+}
+
+drawGauge('g1',87,'#00E5FF');
+drawGauge('g2',91,'#FFB300');
+drawGauge('g3',96,'#00E676');
+drawGauge('g4',100,'#E040FB');
+drawGauge('g5',73,'#FF6D00');
+
+// ── TREND LINE ──
+const wks=['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10','S11','S12','S13','S14','S15','S16','S17','S18','S19','S20','S21','S22','S23','S24'];
+const prod=[16200,16800,15900,17200,17800,16500,18100,17600,18400,18200,19100,18700,17900,19300,18600,19800,18900,20100,19400,20300,19700,20800,19200,18420];
+const tgt=new Array(24).fill(18000);
+new Chart(document.getElementById('trendChart'),{
+  type:'line',
+  data:{labels:wks,datasets:[
+    {label:'Real',data:prod,borderColor:'#00E5FF',backgroundColor:'rgba(0,229,255,0.07)',borderWidth:2,pointRadius:2,pointBg:'#00E5FF',tension:0.4,fill:true},
+    {label:'Target',data:tgt,borderColor:'rgba(255,179,0,0.5)',borderWidth:1.5,borderDash:[5,5],pointRadius:0,tension:0}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:2000},
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{grid:{color:'rgba(0,229,255,0.04)'},ticks:{font:{size:7,family:'Share Tech Mono'},color:'#80CBC4',maxRotation:0}},
+      y:{grid:{color:'rgba(0,229,255,0.04)'},ticks:{font:{size:7,family:'Share Tech Mono'},color:'#80CBC4',callback:v=>(v/1000).toFixed(0)+'k'}}}}
+});
+
+// ── BAR CHART ──
+new Chart(document.getElementById('barChart'),{
+  type:'bar',
+  data:{labels:['Área N','Área S','Área E','Área O','Pit-1','Pit-2'],
+    datasets:[
+      {label:'Mineral',data:[4820,3960,5240,2890,6100,4710],backgroundColor:'rgba(0,229,255,0.65)',borderColor:'#00E5FF',borderWidth:1,borderRadius:2},
+      {label:'Desmonte',data:[8200,6500,9100,4300,11200,7800],backgroundColor:'rgba(255,179,0,0.35)',borderColor:'rgba(255,179,0,0.6)',borderWidth:1,borderRadius:2}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:1500},
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:7,family:'Share Tech Mono'},color:'#80CBC4'}},
+      y:{grid:{color:'rgba(0,229,255,0.04)'},ticks:{font:{size:7},color:'#80CBC4',callback:v=>(v/1000).toFixed(0)+'k'}}}}
+});
+
+// ── HORIZONTAL BAR ──
+new Chart(document.getElementById('hbarChart'),{
+  type:'bar',
+  data:{labels:['Camiones 240t','Palas Eléctr.','Perforadoras','Motonivel.','Tractores','Cisternas'],
+    datasets:[{data:[94,89,88,45,82,91],backgroundColor:['rgba(0,230,118,0.7)','rgba(0,230,118,0.7)','rgba(0,230,118,0.7)','rgba(255,23,68,0.7)','rgba(255,179,0,0.7)','rgba(0,229,255,0.7)'],borderRadius:3}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:{duration:1800},
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{grid:{color:'rgba(0,229,255,0.04)'},max:100,ticks:{font:{size:7},color:'#80CBC4',callback:v=>v+'%'}},
+      y:{grid:{display:false},ticks:{font:{size:8,family:'Share Tech Mono'},color:'#80CBC4'}}}}
+});
+
+// ── DONUT ──
+new Chart(document.getElementById('donutChart'),{
+  type:'doughnut',
+  data:{datasets:[{data:[28,12,4,3],backgroundColor:['rgba(0,230,118,0.8)','rgba(255,179,0,0.8)','rgba(255,23,68,0.8)','rgba(0,229,255,0.8)'],borderColor:['#00E676','#FFB300','#FF1744','#00E5FF'],borderWidth:1.5}]},
+  options:{responsive:false,cutout:'70%',animation:{duration:1800},plugins:{legend:{display:false},tooltip:{enabled:false}}}
+});
+
+// ── RADAR ──
+new Chart(document.getElementById('radarChart'),{
+  type:'radar',
+  data:{labels:['Extracción','Proceso','Logística','Seguridad','Calidad','Costos'],
+    datasets:[
+      {data:[87,91,78,100,96,83],backgroundColor:'rgba(0,229,255,0.1)',borderColor:'#00E5FF',borderWidth:2,pointBackgroundColor:'#00E5FF',pointRadius:3},
+      {data:[85,85,85,95,90,80],backgroundColor:'rgba(255,179,0,0.04)',borderColor:'rgba(255,179,0,0.5)',borderWidth:1,borderDash:[3,3],pointRadius:0}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:2000},
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{r:{grid:{color:'rgba(0,229,255,0.1)'},angleLines:{color:'rgba(0,229,255,0.1)'},
+      pointLabels:{font:{size:8,family:'Share Tech Mono'},color:'#80CBC4'},ticks:{display:false},min:0,max:100}}}
+});
+
+// ── SCATTER ──
+const scatterData=[];
+for(let i=0;i<30;i++) scatterData.push({x:50+Math.random()*50,y:8000+Math.random()*14000});
+new Chart(document.getElementById('scatterChart'),{
+  type:'scatter',
+  data:{datasets:[{data:scatterData,backgroundColor:'rgba(0,229,255,0.5)',borderColor:'rgba(0,229,255,0.8)',pointRadius:4,pointHoverRadius:6}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{grid:{color:'rgba(0,229,255,0.04)'},ticks:{font:{size:7},color:'#80CBC4',callback:v=>v+'%'},title:{display:true,text:'OEE %',color:'#80CBC4',font:{size:8}}},
+      y:{grid:{color:'rgba(0,229,255,0.04)'},ticks:{font:{size:7},color:'#80CBC4',callback:v=>(v/1000).toFixed(0)+'k'},title:{display:true,text:'t/turno',color:'#80CBC4',font:{size:8}}}}}
+});
+
+// ── STACKED AREA ──
+const months=['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10','S11','S12'];
+new Chart(document.getElementById('stackedChart'),{
+  type:'line',
+  data:{labels:months,datasets:[
+    {label:'Mano Obra',data:[420,440,430,460,450,480,470,490,460,500,480,510],backgroundColor:'rgba(0,229,255,0.3)',borderColor:'rgba(0,229,255,0.8)',borderWidth:1.5,fill:true,tension:0.4},
+    {label:'Combustible',data:[280,310,290,320,340,300,360,330,350,370,340,380],backgroundColor:'rgba(255,179,0,0.25)',borderColor:'rgba(255,179,0,0.7)',borderWidth:1.5,fill:true,tension:0.4},
+    {label:'Mantenimiento',data:[180,200,160,220,190,240,210,230,200,250,220,260],backgroundColor:'rgba(224,64,251,0.2)',borderColor:'rgba(224,64,251,0.6)',borderWidth:1.5,fill:true,tension:0.4}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:1600},
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{grid:{color:'rgba(0,229,255,0.03)'},ticks:{font:{size:7,family:'Share Tech Mono'},color:'#80CBC4'}},
+      y:{stacked:true,grid:{color:'rgba(0,229,255,0.03)'},ticks:{font:{size:7},color:'#80CBC4',callback:v=>v+'k'}}}}
+});
+
+// ── ENERGY LINE ──
+new Chart(document.getElementById('energyChart'),{
+  type:'line',
+  data:{labels:['00','02','04','06','08','10','12','14','16','18','20','22'],
+    datasets:[
+      {data:[1200,980,850,1100,1800,2200,2400,2350,2100,1900,1600,1400],borderColor:'#FFB300',backgroundColor:'rgba(255,179,0,0.1)',borderWidth:2,pointRadius:2,tension:0.4,fill:true},
+      {data:new Array(12).fill(2000),borderColor:'rgba(255,23,68,0.4)',borderWidth:1,borderDash:[4,4],pointRadius:0}
+    ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{x:{grid:{color:'rgba(0,229,255,0.03)'},ticks:{font:{size:7,family:'Share Tech Mono'},color:'#80CBC4'}},
+      y:{grid:{color:'rgba(0,229,255,0.03)'},ticks:{font:{size:7},color:'#80CBC4',callback:v=>v/1000+'MW'}}}}
+});
+
+// ── MAINTENANCE BARS ──
+const maintItems=[
+  {label:'PM Camiones 240t',pct:78,color:'#FFB300'},
+  {label:'PM Palas Eléctricas',pct:92,color:'#00E676'},
+  {label:'CM Motoniveladora',pct:45,color:'#FF1744'},
+  {label:'PM Perforadoras',pct:100,color:'#00E676'},
+  {label:'Lubricación Flota',pct:65,color:'#FF6D00'},
+  {label:'Inspección SSOMA',pct:88,color:'#00E5FF'},
+];
+const mb=document.getElementById('maintBars');
+if(mb) {
+  maintItems.forEach(item=>{
+    mb.innerHTML+=`
+      <div style="margin-bottom:7px;">
+        <div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px;">
+          <span style="color:var(--text-dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;">${item.label}</span>
+          <span style="color:${item.color};font-family:'Orbitron',monospace;font-size:9px;">${item.pct}%</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${item.pct}%;background:${item.color};border-radius:3px;box-shadow:0 0 6px ${item.color};"></div>
+        </div>
+      </div>`;
+  });
+}
+
+// ── LIVE CLOCK ──
+setInterval(()=>{
+  const now=new Date();
+  const el=document.getElementById('liveClock');
+  if(el) el.textContent=`LIVE · ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+},1000);
+</script>
+</body>
+</html>
